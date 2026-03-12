@@ -75,7 +75,7 @@ curl -fsSL https://raw.githubusercontent.com/matrixorigin/Memoria/main/scripts/i
     MEMORIA_EMBEDDING_PROVIDER='openai' \
     MEMORIA_EMBEDDING_MODEL='text-embedding-3-small' \
     MEMORIA_EMBEDDING_API_KEY='sk-...' \
-    MEMORIA_LLM_BASE_URL='https://api.magikcloud.cn/v1' \
+    MEMORIA_LLM_BASE_URL='https://api.llm/v1' \
     MEMORIA_LLM_API_KEY='...' \
     MEMORIA_LLM_MODEL='ep-deepseek-v3-2-104138' \
     bash
@@ -152,7 +152,7 @@ Minimal remote-API config:
           "embeddingProvider": "openai",
           "embeddingModel": "text-embedding-3-small",
           "embeddingApiKey": "sk-...",
-          "llmBaseUrl": "https://api.magikcloud.cn/v1",
+          "llmBaseUrl": "https://api.llm/v1",
           "llmApiKey": "...",
           "llmModel": "ep-deepseek-v3-2-104138",
           "autoRecall": true,
