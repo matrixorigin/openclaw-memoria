@@ -1,0 +1,50 @@
+{
+  "name": "@matrixorigin/memory-memoria",
+  "version": "0.2.0",
+  "description": "Local-first OpenClaw memory plugin packaging MatrixOrigin Memoria with embedded and HTTP backends.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/matrixorigin/Memoria.git"
+  },
+  "homepage": "https://github.com/matrixorigin/Memoria",
+  "bugs": {
+    "url": "https://github.com/matrixorigin/Memoria/issues"
+  },
+  "keywords": [
+    "openclaw",
+    "openclaw-plugin",
+    "memory",
+    "memoria",
+    "matrixone",
+    "local-first"
+  ],
+  "license": "Apache-2.0",
+  "type": "module",
+  "files": [
+    "README.md",
+    "scripts/",
+    "openclaw/",
+    "openclaw.plugin.json",
+    "memoria/",
+    "pyproject.toml"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "peerDependencies": {
+    "openclaw": ">=2026.3.0"
+  },
+  "peerDependenciesMeta": {
+    "openclaw": {
+      "optional": true
+    }
+  },
+  "openclaw": {
+    "extensions": [
+      "./openclaw/index.ts"
+    ]
+  }
+}

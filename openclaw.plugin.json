@@ -1,0 +1,255 @@
+{
+  "id": "memory-memoria",
+  "name": "Memory (Memoria)",
+  "description": "Memoria-backed long-term memory plugin for OpenClaw with local-first embedded mode and optional HTTP mode.",
+  "version": "0.2.0",
+  "kind": "memory",
+  "uiHints": {
+    "backend": {
+      "label": "Backend Mode",
+      "help": "embedded connects directly to MatrixOne through the bundled Python runtime; http connects to an existing Memoria API.",
+      "placeholder": "embedded"
+    },
+    "dbUrl": {
+      "label": "MatrixOne Connection String",
+      "help": "Default points to a local MatrixOne on 127.0.0.1:6001. Replace it with a MatrixOne Cloud DSN to switch to cloud without changing backend mode.",
+      "placeholder": "mysql+pymysql://root:111@127.0.0.1:6001/memoria"
+    },
+    "apiUrl": {
+      "label": "Memoria API URL",
+      "help": "Only used when backend=http.",
+      "placeholder": "http://127.0.0.1:8100"
+    },
+    "apiKey": {
+      "label": "Memoria API Key",
+      "help": "Bearer token for backend=http.",
+      "sensitive": true,
+      "placeholder": "mem-..."
+    },
+    "pythonExecutable": {
+      "label": "Python Executable",
+      "help": "Python interpreter used by the embedded bridge.",
+      "advanced": true,
+      "placeholder": "python3"
+    },
+    "memoriaRoot": {
+      "label": "External Memoria Root",
+      "help": "Optional path to another Memoria checkout or installed package root. Leave empty to use the bundled source in this plugin.",
+      "advanced": true
+    },
+    "defaultUserId": {
+      "label": "Default User ID",
+      "help": "Single-user quick-start identity used by embedded mode unless userIdStrategy derives one from the OpenClaw context.",
+      "placeholder": "openclaw-user"
+    },
+    "userIdStrategy": {
+      "label": "User ID Strategy",
+      "help": "config keeps one shared Memoria user; agentId or sessionKey derive the identity from OpenClaw runtime context.",
+      "advanced": true,
+      "placeholder": "config"
+    },
+    "autoRecall": {
+      "label": "Auto-Recall",
+      "help": "Automatically inject relevant memories into the prompt before each run."
+    },
+    "autoObserve": {
+      "label": "Auto-Observe",
+      "help": "Automatically extract memories from recent conversation turns at agent_end."
+    },
+    "retrieveTopK": {
+      "label": "Recall Top K",
+      "help": "Maximum number of memories returned for memory_search and auto-recall.",
+      "placeholder": "5"
+    },
+    "recallMinPromptLength": {
+      "label": "Recall Min Length",
+      "help": "Prompts shorter than this are skipped for auto-recall.",
+      "advanced": true,
+      "placeholder": "8"
+    },
+    "includeCrossSession": {
+      "label": "Cross-Session Recall",
+      "help": "When disabled, embedded retrieval is scoped to the current sessionId when one exists."
+    },
+    "retrieveMemoryTypes": {
+      "label": "Memory Types",
+      "help": "Optional memory types to include during memory_search and auto-recall.",
+      "advanced": true
+    },
+    "observeTailMessages": {
+      "label": "Observe Tail Messages",
+      "help": "Number of recent user/assistant messages forwarded to observe_turn.",
+      "advanced": true,
+      "placeholder": "6"
+    },
+    "observeMaxChars": {
+      "label": "Observe Max Chars",
+      "help": "Maximum total characters forwarded to observe_turn.",
+      "advanced": true,
+      "placeholder": "6000"
+    },
+    "timeoutMs": {
+      "label": "Request Timeout",
+      "help": "Timeout for HTTP requests and embedded bridge calls in milliseconds.",
+      "advanced": true,
+      "placeholder": "15000"
+    },
+    "maxListPages": {
+      "label": "List Page Limit",
+      "help": "Maximum number of HTTP list pages scanned when resolving memoria:// paths in HTTP mode.",
+      "advanced": true,
+      "placeholder": "20"
+    },
+    "embeddingProvider": {
+      "label": "Embedding Provider",
+      "help": "Embedded mode only. local is the fastest zero-key setup; openai supports OpenAI-compatible endpoints.",
+      "placeholder": "local"
+    },
+    "embeddingModel": {
+      "label": "Embedding Model",
+      "help": "Embedded mode only.",
+      "placeholder": "all-MiniLM-L6-v2"
+    },
+    "embeddingBaseUrl": {
+      "label": "Embedding Base URL",
+      "help": "Embedded mode only. Optional for OpenAI-compatible providers.",
+      "advanced": true,
+      "placeholder": "https://api.openai.com/v1"
+    },
+    "embeddingApiKey": {
+      "label": "Embedding API Key",
+      "help": "Embedded mode only. Required for providers such as OpenAI, SiliconFlow, or OpenAI-compatible endpoints.",
+      "advanced": true,
+      "sensitive": true,
+      "placeholder": "sk-..."
+    },
+    "embeddingDim": {
+      "label": "Embedding Dimensions",
+      "help": "Embedded mode only. Leave empty for known models.",
+      "advanced": true,
+      "placeholder": "1024"
+    },
+    "llmApiKey": {
+      "label": "Observer LLM API Key",
+      "help": "Optional. Enables auto-observe extraction and reflection-style features in embedded mode.",
+      "advanced": true,
+      "sensitive": true,
+      "placeholder": "sk-..."
+    },
+    "llmBaseUrl": {
+      "label": "Observer LLM Base URL",
+      "help": "Optional OpenAI-compatible base URL for embedded auto-observe.",
+      "advanced": true,
+      "placeholder": "https://api.openai.com/v1"
+    },
+    "llmModel": {
+      "label": "Observer LLM Model",
+      "help": "Model used by embedded auto-observe and related extraction flows.",
+      "advanced": true,
+      "placeholder": "gpt-4o-mini"
+    }
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "backend": {
+        "type": "string",
+        "enum": ["embedded", "http"]
+      },
+      "dbUrl": {
+        "type": "string"
+      },
+      "apiUrl": {
+        "type": "string"
+      },
+      "apiKey": {
+        "type": "string"
+      },
+      "pythonExecutable": {
+        "type": "string"
+      },
+      "memoriaRoot": {
+        "type": "string"
+      },
+      "defaultUserId": {
+        "type": "string"
+      },
+      "userIdStrategy": {
+        "type": "string",
+        "enum": ["config", "agentId", "sessionKey"]
+      },
+      "autoRecall": {
+        "type": "boolean"
+      },
+      "autoObserve": {
+        "type": "boolean"
+      },
+      "retrieveTopK": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 20
+      },
+      "recallMinPromptLength": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 500
+      },
+      "includeCrossSession": {
+        "type": "boolean"
+      },
+      "retrieveMemoryTypes": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "enum": ["profile", "semantic", "procedural", "working", "tool_result"]
+        }
+      },
+      "observeTailMessages": {
+        "type": "integer",
+        "minimum": 2,
+        "maximum": 30
+      },
+      "observeMaxChars": {
+        "type": "integer",
+        "minimum": 256,
+        "maximum": 50000
+      },
+      "timeoutMs": {
+        "type": "integer",
+        "minimum": 1000,
+        "maximum": 120000
+      },
+      "maxListPages": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 100
+      },
+      "embeddingProvider": {
+        "type": "string"
+      },
+      "embeddingModel": {
+        "type": "string"
+      },
+      "embeddingBaseUrl": {
+        "type": "string"
+      },
+      "embeddingApiKey": {
+        "type": "string"
+      },
+      "embeddingDim": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "llmApiKey": {
+        "type": "string"
+      },
+      "llmBaseUrl": {
+        "type": "string"
+      },
+      "llmModel": {
+        "type": "string"
+      }
+    }
+  }
+}
