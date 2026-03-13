@@ -37,6 +37,11 @@ local-embedding = [
 memoria = "memoria.cli:main"
 memoria-mcp = "memoria.mcp_local.server:main"
 
+[project.urls]
+Homepage = "https://github.com/matrixorigin/openclaw-memoria"
+Repository = "https://github.com/matrixorigin/openclaw-memoria"
+Issues = "https://github.com/matrixorigin/openclaw-memoria/issues"
+
 [tool.setuptools.packages.find]
 include = ["memoria*"]
 

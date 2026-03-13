@@ -32,6 +32,14 @@ const EMPTY_OBJECT_SCHEMA = {
   properties: {},
 } as const;
 
+const MEMORIA_AGENT_GUIDANCE = [
+  "Memoria is the durable external memory system for this runtime.",
+  "When the user asks you to remember, update, forget, correct, snapshot, or restore memory, prefer the Memoria tools over editing local workspace memory files.",
+  "Use memory_store for new durable facts or preferences, memory_correct or memory_forget for repairs, and memory_snapshot plus memory_rollback when you need a recoverable checkpoint.",
+  "Workspace files like MEMORY.md and memory/YYYY-MM-DD.md are separate local notes. Only edit them when the user explicitly asks for file-based memory or workspace-local notes.",
+  "Do not claim that only memory_search or memory_get are available when other memory_* tools are present in the tool list.",
+].join("\n");
+
 function objectSchema(
   properties: Record<string, unknown>,
   required: string[] = [],
@@ -443,6 +451,10 @@ const plugin = {
     const client = new MemoriaClient(config);
 
     api.logger.info(`memory-memoria: registered (${config.backend})`);
+
+    api.on("before_prompt_build", async () => ({
+      appendSystemContext: MEMORIA_AGENT_GUIDANCE,
+    }));
 
     api.registerTool(
       (ctx) => {
@@ -1778,7 +1790,44 @@ const plugin = {
           api.logger.warn(`memory-memoria: auto-observe failed: ${String(error)}`);
         }
       });
+
+      api.on("before_reset", async (event, ctx) => {
+        if (!Array.isArray(event.messages) || event.messages.length === 0) {
+          return;
+        }
+
+        const messages = collectRecentConversationMessages(event.messages, {
+          tailMessages: config.observeTailMessages,
+          maxChars: config.observeMaxChars,
+        });
+        if (messages.length === 0) {
+          return;
+        }
+
+        const userId = resolveUserId(config, ctx);
+
+        try {
+          const created = await client.observe({
+            userId,
+            messages,
+            sourceEventIds: ctx.sessionId ? [`openclaw:before_reset:${ctx.sessionId}`] : undefined,
+          });
+          if (created.length > 0) {
+            api.logger.info(
+              `memory-memoria: observed ${created.length} new memories before reset`,
+            );
+          }
+        } catch (error) {
+          api.logger.warn(`memory-memoria: before_reset observe failed: ${String(error)}`);
+        }
+      });
     }
+
+    api.on("after_compaction", async () => {
+      api.logger.info(
+        "memory-memoria: compaction finished; next prompt will use live Memoria recall",
+      );
+    });
 
     api.registerService({
       id: "memory-memoria",

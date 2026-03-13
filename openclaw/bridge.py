@@ -9,9 +9,13 @@ from pathlib import Path
 from typing import Any
 
 from sqlalchemy import create_engine, text
+from sqlalchemy.exc import OperationalError
+from sqlalchemy.engine import make_url
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 MEMORIA_MEMORY_TYPES = ("profile", "semantic", "procedural", "working", "tool_result")
+MATRIXONE_LOCAL_URL = "https://github.com/matrixorigin/matrixone"
+MATRIXONE_CLOUD_URL = "https://matrixorigin.cn/login"
 
 
 def _fail(message: str) -> None:
@@ -24,6 +28,76 @@ def _set_env_if_present(env_name: str, value: Any) -> None:
     text_value = str(value).strip()
     if text_value:
         os.environ[env_name] = text_value
+
+
+def _format_db_url(db_url: str) -> str:
+    try:
+        url = make_url(db_url)
+    except Exception:
+        return db_url or "<empty>"
+
+    host = url.host or "<unknown-host>"
+    port = url.port or 6001
+    database = url.database or "<unknown-database>"
+    return f"{host}:{port}/{database}"
+
+
+def _matrixone_setup_hint(db_url: str) -> str:
+    return "\n".join(
+        [
+            f"Configured dbUrl: {db_url or '<empty>'}",
+            f"Parsed target: {_format_db_url(db_url)}",
+            f"If you want local embedded mode, install or start MatrixOne locally: {MATRIXONE_LOCAL_URL}",
+            f"If you prefer cloud, create a MatrixOne cloud instance and replace dbUrl with its connection string: {MATRIXONE_CLOUD_URL}",
+        ]
+    )
+
+
+def _mysql_error_code(exc: OperationalError) -> int | None:
+    original = getattr(exc, "orig", None)
+    args = getattr(original, "args", ())
+    if not args:
+        return None
+    code = args[0]
+    return code if isinstance(code, int) else None
+
+
+def _friendly_operational_error(db_url: str, exc: OperationalError) -> str:
+    code = _mysql_error_code(exc)
+    original = getattr(exc, "orig", None)
+    raw_message = str(original or exc)
+    target = _format_db_url(db_url)
+
+    if code in {2002, 2003, 2005} or "Connection refused" in raw_message or "Can't connect to MySQL server" in raw_message:
+        return (
+            "Could not connect to MatrixOne in embedded mode.\n"
+            f"Target: {target}\n"
+            "This usually means MatrixOne is not running yet, the host/port in dbUrl is wrong, or the instance is not reachable.\n"
+            f"{_matrixone_setup_hint(db_url)}"
+        )
+
+    if code == 1049 or "Unknown database" in raw_message:
+        return (
+            "The MatrixOne server is reachable, but the database in dbUrl does not exist yet.\n"
+            f"Target: {target}\n"
+            "Check the database name in dbUrl, or point the plugin at an existing MatrixOne database.\n"
+            f"{_matrixone_setup_hint(db_url)}"
+        )
+
+    if code == 1045 or "Access denied" in raw_message:
+        return (
+            "MatrixOne rejected the username or password from dbUrl.\n"
+            f"Target: {target}\n"
+            "Check the credentials in dbUrl, or replace it with a valid local or cloud MatrixOne connection string.\n"
+            f"{_matrixone_setup_hint(db_url)}"
+        )
+
+    return (
+        "MatrixOne returned an operational error while initializing Memoria embedded mode.\n"
+        f"Target: {target}\n"
+        f"Original error: {raw_message}\n"
+        f"{_matrixone_setup_hint(db_url)}"
+    )
 
 
 def _resolve_candidate_root(raw: str) -> Path:
@@ -119,11 +193,16 @@ class EmbeddedRuntime:
         _configure_runtime(config)
 
         from memoria.api.models import Base as ApiBase
-        from memoria.schema import ensure_tables
+        from memoria.schema import ensure_database, ensure_tables
 
         db_url = str(config.get("dbUrl", "")).strip()
         if not db_url:
-            _fail("dbUrl required for embedded mode")
+            _fail(
+                "dbUrl required for embedded mode.\n"
+                "Set a local or cloud MatrixOne connection string first.\n"
+                f"If you want local embedded mode, install or start MatrixOne locally: {MATRIXONE_LOCAL_URL}\n"
+                f"If you prefer cloud, create a MatrixOne cloud instance and replace dbUrl with its connection string: {MATRIXONE_CLOUD_URL}"
+            )
 
         dim_raw = config.get("embeddingDim")
         dim = 0
@@ -134,6 +213,7 @@ class EmbeddedRuntime:
 
         engine = create_engine(db_url, pool_pre_ping=True)
         try:
+            ensure_database(engine)
             ApiBase.metadata.create_all(bind=engine, checkfirst=True)
             ensure_tables(engine, dim=dim or None)
         finally:
@@ -727,6 +807,7 @@ def _dispatch(runtime: EmbeddedRuntime, action: str, params: dict[str, Any]) -> 
 
 
 def main() -> int:
+    config: dict[str, Any] = {}
     try:
         request = json.loads(sys.stdin.read() or "{}")
         config = request.get("config") if isinstance(request.get("config"), dict) else {}
@@ -738,6 +819,20 @@ def main() -> int:
         runtime = EmbeddedRuntime(config)
         result = _dispatch(runtime, action, params)
         print(json.dumps({"ok": True, "result": result}, ensure_ascii=False))
+    except OperationalError as exc:  # pragma: no cover - subprocess boundary
+        db_url = str(config.get("dbUrl", "")).strip()
+        print(
+            json.dumps(
+                {
+                    "ok": False,
+                    "error": {
+                        "type": exc.__class__.__name__,
+                        "message": _friendly_operational_error(db_url, exc),
+                    },
+                },
+                ensure_ascii=False,
+            )
+        )
     except Exception as exc:  # pragma: no cover - subprocess boundary
         print(
             json.dumps(
