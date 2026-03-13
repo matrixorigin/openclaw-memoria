@@ -563,6 +563,10 @@ openclaw ltm list --limit 10
 openclaw ltm search "rollback token" --limit 5
 ```
 
+For a longer human-driven validation session, use the manual storybook:
+
+- [docs/memoria-session-storybook.md](/home/momo/src/openclaw-memoria/docs/memoria-session-storybook.md)
+
 ## Optional HTTP mode
 
 If you already run Memoria's HTTP API, use:
